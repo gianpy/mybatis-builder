@@ -202,5 +202,4 @@ public class JavaMergerShellCallback extends DefaultShellCallback {
                 .anyMatch(x -> !x.getComment().isPresent()
                         || !x.getComment().get().getContent().contains(MergeConstants.NEW_ELEMENT_TAG));
     }
-
 }

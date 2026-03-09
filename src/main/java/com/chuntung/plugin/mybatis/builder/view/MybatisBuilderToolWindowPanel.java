@@ -62,3 +62,4 @@ public class MybatisBuilderToolWindowPanel extends SimpleToolWindowPanel {
         setContent(scrollPane);
     }
 }
+

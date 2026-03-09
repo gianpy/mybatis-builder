@@ -21,7 +21,6 @@ import java.util.List;
 
 public class ColumnsSettingHandler {
     private MybatisBuilderService service;
-
     private String[] FIELD_NAMES = {"action", "columnName", "columnType", "javaType", "javaProperty"};
     private String[] EDITABLE_FIELD_NAMES = {"action", "javaType", "javaProperty"};
     private String[] COLUMN_NAMES = {"Action", "Column name", "Column type", "Java type", "Java property"};

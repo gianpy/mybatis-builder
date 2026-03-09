@@ -4,6 +4,7 @@
 
 package com.chuntung.plugin.mybatis.builder.view;
 
+import com.chuntung.plugin.mybatis.builder.action.ConnectionSettingsListener;
 import com.chuntung.plugin.mybatis.builder.action.SettingsHandler;
 import com.chuntung.plugin.mybatis.builder.generator.plugins.RenamePlugin;
 import com.chuntung.plugin.mybatis.builder.model.ConnectionInfo;
@@ -18,14 +19,14 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.ui.ValidationInfo;
-import com.intellij.openapi.util.IconLoader;
 import com.intellij.ui.components.labels.LinkLabel;
 import org.jetbrains.annotations.Nullable;
 import org.mybatis.generator.config.ModelType;
-
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.util.ArrayList;
@@ -34,6 +35,8 @@ import java.util.UUID;
 
 public class MybatisBuilderSettingsDialog extends DialogWrapper {
     private static final FileChooserDescriptor LIBRARY_FILE_DESCRIPTOR = new FileChooserDescriptor(false, false, true, false, false, false);
+    private static final FileChooserDescriptor DATABASE_FILE_DESCRIPTOR = new FileChooserDescriptor(true, false, false, false, false, false);
+
     private JPanel contentPanel;
     private JList connectionList;
     private JButton addButton;
@@ -70,11 +73,15 @@ public class MybatisBuilderSettingsDialog extends DialogWrapper {
     private JButton clearAllButton;
     private JCheckBox useJSR310TypesCheckBox;
     private JLabel urlLabel;
+    private TextFieldWithBrowseButton fileName;
+    private JPanel fileSelection;
+    private JCheckBox useSIDCheckBox;
 
     private final SettingsHandler settingsHandler;
     private Project project;
     private ConnectionInfo current;
     private Action applyAction;
+    private boolean isSettingData = false;
 
     public MybatisBuilderSettingsDialog(@Nullable Project project) {
         super(project);
@@ -122,6 +129,9 @@ public class MybatisBuilderSettingsDialog extends DialogWrapper {
 
         driverPanel.setVisible(false);
         driverLibraryText.addBrowseFolderListener("Choose Library", "Library should contain java.sql.Driver implement ", null, LIBRARY_FILE_DESCRIPTOR);
+        
+        // file selection
+        fileName.addBrowseFolderListener("Choose Database File", null, project, DATABASE_FILE_DESCRIPTOR);
 
         portSpinner.setModel(new SpinnerNumberModel(3306, 80, 65536, 1));
         portSpinner.setEditor(new JSpinner.NumberEditor(portSpinner, "#"));
@@ -129,9 +139,12 @@ public class MybatisBuilderSettingsDialog extends DialogWrapper {
         driverTypeComboBox.setModel(new DefaultComboBoxModel(DriverTypeEnum.values()));
         driverTypeComboBox.addItemListener(e -> {
             DriverTypeEnum item = (DriverTypeEnum) e.getItem();
-            driverPanel.setVisible(DriverTypeEnum.Custom.equals(item));
-            hostPanel.setVisible(!DriverTypeEnum.Custom.equals(item));
-            portSpinner.setValue(item.getDefaultPort());
+            updateVisibility(item);
+            
+            if (!isFileBased(item)) {
+                portSpinner.setValue(item.getDefaultPort());
+            }
+            updateOracleUrl();
         });
         driverTypeComboBox.setRenderer(new DefaultListCellRenderer() {
             @Override
@@ -165,6 +178,77 @@ public class MybatisBuilderSettingsDialog extends DialogWrapper {
 
         // clear all history
         clearAllButton.addActionListener(e -> settingsHandler.clearHistory());
+
+        useSIDCheckBox.addActionListener(e -> updateOracleUrl());
+
+        DocumentListener urlUpdater = new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { updateOracleUrl(); }
+            public void removeUpdate(DocumentEvent e) { updateOracleUrl(); }
+            public void changedUpdate(DocumentEvent e) { updateOracleUrl(); }
+        };
+        hostText.getDocument().addDocumentListener(urlUpdater);
+        databaseText.getDocument().addDocumentListener(urlUpdater);
+        portSpinner.addChangeListener(e -> updateOracleUrl());
+    }
+    
+    private boolean isFileBased(DriverTypeEnum item) {
+        return DriverTypeEnum.SqlLite.equals(item) ||
+               DriverTypeEnum.DuckDB.equals(item);
+    }
+    
+    private void updateVisibility(DriverTypeEnum item) {
+        boolean isFileBased = isFileBased(item);
+        boolean isOracle = DriverTypeEnum.Oracle.equals(item);
+        boolean isCustom = DriverTypeEnum.Custom.equals(item);
+
+        fileSelection.setVisible(isFileBased);
+        hostPanel.setVisible(!isFileBased && !isCustom);
+        driverPanel.setVisible(isCustom);
+
+        // Hide/Show User, Password, Database and their labels
+        boolean showCredentials = !isFileBased;
+        setFieldAndLabelVisible(connectionPanel, userText, showCredentials, "User");
+        setFieldAndLabelVisible(connectionPanel, passwordText, showCredentials, "Password");
+        setFieldAndLabelVisible(connectionPanel, databaseText, showCredentials, "Database");
+        setFieldAndLabelVisible(useSIDCheckBox, useSIDCheckBox, isOracle, "SID");
+        if (connectionPanel != null) {
+            connectionPanel.revalidate();
+            connectionPanel.repaint();
+        }
+    }
+
+    private void updateOracleUrl() {
+        if (isSettingData) return;
+        if (DriverTypeEnum.Oracle.equals(driverTypeComboBox.getSelectedItem())) {
+            String host = hostText.getText();
+            Object port = portSpinner.getValue();
+            String database = databaseText.getText();
+            String url;
+            if (useSIDCheckBox.isSelected()) {
+                url = String.format("jdbc:oracle:thin:@%s:%s:%s", host, port, database);
+            } else {
+                url = String.format("jdbc:oracle:thin:@//%s:%s/%s", host, port, database);
+            }
+            urlText.setText(url);
+        }
+    }
+
+    private void setFieldAndLabelVisible(Container searchContainer, JComponent field, boolean visible, String labelTextHint) {
+        if (field != null) {
+            field.setVisible(visible);
+        }
+
+        if (searchContainer == null || labelTextHint == null) return;
+
+        for (Component c : searchContainer.getComponents()) {
+            if (c instanceof JLabel) {
+                JLabel label = (JLabel) c;
+                if (label.getText() != null && label.getText().startsWith(labelTextHint)) {
+                    label.setVisible(visible);
+                    break; 
+                }
+            }
+        }
     }
 
     private void initDefaultParameterPane() {
@@ -198,22 +282,28 @@ public class MybatisBuilderSettingsDialog extends DialogWrapper {
     }
 
     private void doTest() {
-        getData(current);
+        // Apply the current UI state to the 'current' object before testing
+        if (current != null) {
+            getData(current);
+        }
         settingsHandler.testConnection(current);
     }
 
     private void doSelect(JList list) {
         ConnectionInfo selected = (ConnectionInfo) list.getSelectedValue();
         if (selected == null) {
+            // If nothing is selected, disable the panel
+            ViewUtil.makeAvailable(connectionPanel, false);
+            current = null;
             return;
         }
 
-        // before change, save previous item
+        // IMPORTANT: Save changes to the previously selected item before switching!
         if (current != null) {
             getData(current);
         }
 
-        // change current to new item
+        // Just load the data of the newly selected item into the UI
         setData(selected);
         current = selected;
     }
@@ -226,6 +316,9 @@ public class MybatisBuilderSettingsDialog extends DialogWrapper {
 
         DefaultListModel model = (DefaultListModel) list.getModel();
         model.remove(selectedIndex);
+        
+        // Reset current if the removed item was selected
+        current = null;
 
         // re-select
         if (selectedIndex > model.getSize() - 1) {
@@ -245,6 +338,7 @@ public class MybatisBuilderSettingsDialog extends DialogWrapper {
     }
 
     private void saveAll() {
+        // Apply the current UI state to the 'current' object before saving
         if (current != null) {
             getData(current);
         }
@@ -259,6 +353,11 @@ public class MybatisBuilderSettingsDialog extends DialogWrapper {
         getData(defaultParameters);
 
         settingsHandler.saveAll(list, defaultParameters);
+        
+        // Notify listeners that settings have changed
+        if (project != null) {
+            project.getMessageBus().syncPublisher(ConnectionSettingsListener.TOPIC).settingsChanged();
+        }
     }
 
     @Override
@@ -269,10 +368,7 @@ public class MybatisBuilderSettingsDialog extends DialogWrapper {
 
     protected void doApplyAction(ActionEvent e) {
         // simulate OK button but not close window
-        getOKAction().setEnabled(false);
-        getOKAction().actionPerformed(e);
-        getOKAction().setEnabled(true);
-
+        saveAll();
         getApplyAction().setEnabled(false);
     }
 
@@ -356,6 +452,8 @@ public class MybatisBuilderSettingsDialog extends DialogWrapper {
     }
 
     public void setData(ConnectionInfo data) {
+        isSettingData = true;
+        try {
         ViewUtil.makeAvailable(connectionPanel, true);
 
         connectionNameText.setText(data.getName());
@@ -365,8 +463,9 @@ public class MybatisBuilderSettingsDialog extends DialogWrapper {
         } else {
             driverTypeComboBox.setSelectedIndex(0);
         }
+        
+        updateVisibility(data.getDriverType());
 
-        driverPanel.setVisible(DriverTypeEnum.Custom.equals(data.getDriverType()));
         driverLibraryText.setText(data.getDriverLibrary());
         driverClassText.setText(data.getDriverClass());
         urlText.setText(data.getUrl());
@@ -379,26 +478,48 @@ public class MybatisBuilderSettingsDialog extends DialogWrapper {
         passwordText.setText(data.getPassword());
         databaseText.setText(data.getDatabase());
 
+        if (DriverTypeEnum.Oracle.equals(data.getDriverType())) {
+            useSIDCheckBox.setSelected(data.getUrl() == null || !data.getUrl().contains("@//"));
+        }
+        
+        if (isFileBased(data.getDriverType())) {
+            fileName.setText(data.getDatabase());
+        }
+
         activeCheckBox.setSelected(data.getActive());
 
         testConnectionButton.setEnabled(true);
         applyAction.setEnabled(true);
+        } finally {
+            isSettingData = false;
+        }
     }
 
     public void getData(ConnectionInfo data) {
         data.setName(connectionNameText.getText());
         data.setDescription(descriptionText.getText());
 
-        data.setDriverType((DriverTypeEnum) driverTypeComboBox.getSelectedItem());
+        DriverTypeEnum driverType = (DriverTypeEnum) driverTypeComboBox.getSelectedItem();
+        data.setDriverType(driverType);
         data.setDriverLibrary(driverLibraryText.getText());
         data.setDriverClass(driverClassText.getText());
-        data.setUrl(urlText.getText());
+        
+        if (isFileBased(driverType)) {
+            data.setDatabase(fileName.getText());
+            String urlPattern = driverType.getUrlPattern();
+            String url = urlPattern.replace("${db}", fileName.getText())
+                                   .replace("${host}", "localhost")
+                                   .replace("${port}", String.valueOf(driverType.getDefaultPort()));
+            data.setUrl(url);
+        } else {
+            data.setUrl(urlText.getText());
+            data.setDatabase(databaseText.getText());
+        }
 
         data.setHost(hostText.getText());
         data.setPort((Integer) portSpinner.getValue());
         data.setUserName(userText.getText());
         data.setPassword(String.valueOf(passwordText.getPassword()));
-        data.setDatabase(databaseText.getText());
 
         data.setActive(activeCheckBox.isSelected());
     }

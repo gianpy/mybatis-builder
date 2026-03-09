@@ -8,7 +8,13 @@ public enum DriverTypeEnum {
 
     MySQL("com.mysql.jdbc.Driver", "jdbc:mysql://${host}:${port}/${db}?useSSL=false&characterEncoding=utf8", 3306, "/images/MySQL.png"),
     PostgreSQL("org.postgresql.Driver", "jdbc:postgresql://${host}:${port}/${db}", 5432, "/images/PostgreSQL.png"),
-    //    Oracle("oracle.jdbc.driver.OracleDriver", "jdbc:oracle:thin:@%s:%s:%s", ""),
+    Oracle("oracle.jdbc.driver.OracleDriver", "jdbc:oracle:thin:@${host}:${port}:${db}", 1521, "/images/Oracle.png"),
+    MariaDB("org.mariadb.jdbc.Driver","jdbc:mariadb://${host}:${port}/${db}",3306,"/images/MariaDB.png"),
+
+    // File-based
+    SqlLite("org.sqlite.JDBC", "jdbc:sqlite:${db}", 0, "/images/SQLite.png"),
+    DuckDB("org.duckdb.DuckDBDriver", "jdbc:duckdb:${db}", 0, "/images/DuckDB.png"),
+
     Custom("", "jdbc:${vendor}://${host}:${port}/${db}", 1234, "/images/connection.png");
 
     private final String driverClass;

@@ -33,7 +33,6 @@ public class CustomDataSource implements DataSource {
     public String getUrl() {
         return url;
     }
-
     public void setUrl(String url) {
         this.url = url;
     }
@@ -41,7 +40,6 @@ public class CustomDataSource implements DataSource {
     public String getUser() {
         return user;
     }
-
     public void setUser(String user) {
         this.user = user;
     }
@@ -49,11 +47,9 @@ public class CustomDataSource implements DataSource {
     public String getPassword() {
         return password;
     }
-
     public void setPassword(String password) {
         this.password = password;
     }
-
     private Driver getDriver() throws SQLException {
         ClassLoader parentClassLoader = getClass().getClassLoader();
         String key = driverClass + "@" + driverLibrary;
@@ -90,7 +86,10 @@ public class CustomDataSource implements DataSource {
         if (StringUtil.stringHasValue(password)) {
             props.put("password", password);
         }
-        props.setProperty("remarks", "true");
+        // DuckDB driver does not support "remarks" property
+        if (!"org.duckdb.DuckDBDriver".equals(driverClass)) {
+            props.setProperty("remarks", "true");
+        }
         Connection connection = getDriver().connect(url, props);
         return connection;
     }

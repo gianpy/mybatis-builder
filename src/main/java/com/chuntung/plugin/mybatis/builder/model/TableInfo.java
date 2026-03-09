@@ -32,7 +32,6 @@ public class TableInfo {
     public String getDatabase() {
         return database;
     }
-
     public void setDatabase(String database) {
         this.database = database;
     }
@@ -40,7 +39,6 @@ public class TableInfo {
     public String getTableName() {
         return tableName;
     }
-
     public void setTableName(String tableName) {
         this.tableName = tableName;
     }
@@ -48,7 +46,6 @@ public class TableInfo {
     public String getTableComment() {
         return tableComment;
     }
-
     public void setTableComment(String tableComment) {
         this.tableComment = tableComment;
     }
@@ -56,7 +53,6 @@ public class TableInfo {
     public String getDomainName() {
         return domainName;
     }
-
     public void setDomainName(String domainName) {
         this.domainName = domainName;
     }
@@ -64,7 +60,6 @@ public class TableInfo {
     public String getKeyColumn() {
         return keyColumn;
     }
-
     public void setKeyColumn(String keyColumn) {
         this.keyColumn = keyColumn;
     }
@@ -72,7 +67,6 @@ public class TableInfo {
     public List<ColumnInfo> getCustomColumns() {
         return customColumns;
     }
-
     public void setCustomColumns(List<ColumnInfo> customColumns) {
         this.customColumns = customColumns;
     }

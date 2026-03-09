@@ -16,7 +16,6 @@ import java.util.List;
 
 public class SettingsHandler {
     private final MybatisBuilderService service;
-
     public static SettingsHandler getInstance(Project project) {
         return new SettingsHandler(project);
     }

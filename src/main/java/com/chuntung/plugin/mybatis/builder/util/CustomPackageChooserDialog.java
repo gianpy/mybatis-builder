@@ -349,6 +349,7 @@ public class CustomPackageChooserDialog extends PackageChooser {
         return null;
     }
 
+    @SuppressWarnings({"deprecation", "removal"})
     private void createNewPackage() {
         final PsiPackage selectedPackage = getTreeSelection();
         if (selectedPackage == null) return;

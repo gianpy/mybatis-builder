@@ -143,9 +143,9 @@ public class MybatisBuilderService {
                 }
             }
 
-            // NOTE: hard-code for SQLite which have no catalog
-            if (list.size() == 0 && "SQLiteConnection".equals(connection.getClass().getSimpleName())) {
-                list.add(DatabaseItem.of(DatabaseItem.ItemTypeEnum.DATABASE, "dummy"));
+            // NOTE: hard-code for file-based DBs which have no catalog
+            if (list.size() == 0 && isFileBased(connectionInfo.getDriverType())) {
+                list.add(DatabaseItem.of(DatabaseItem.ItemTypeEnum.DATABASE, "Default"));
             }
         } finally {
             close(connection);
@@ -155,6 +155,11 @@ public class MybatisBuilderService {
 
     private boolean isOracle(Connection connection) {
         return connection.getClass().getName().startsWith("oracle");
+    }
+    
+    private boolean isFileBased(DriverTypeEnum driverType) {
+        return DriverTypeEnum.SqlLite.equals(driverType) ||
+               DriverTypeEnum.DuckDB.equals(driverType) ;
     }
 
     public List<DatabaseItem> fetchTables(String connectionId, String database) throws SQLException {
@@ -166,13 +171,21 @@ public class MybatisBuilderService {
             connection = dataSource.getConnection();
             DatabaseMetaData meta = connection.getMetaData();
             String catalog = database, schema = null;
-
             // oracle should specify schema
             if (isOracle(connection)) {
                 schema = database;
+                catalog = null;
+            } else if (isFileBased(connectionInfo.getDriverType())) {
+                catalog = null;
+                schema = null;
             }
 
-            ResultSet tableRS = meta.getTables(catalog, schema, null, new String[]{"TABLE"});
+            String[] types = new String[]{"TABLE"};
+            if (DriverTypeEnum.DuckDB.equals(connectionInfo.getDriverType())) {
+                types = null;
+            }
+
+            ResultSet tableRS = meta.getTables(catalog, schema, null, types);
             while (tableRS.next()) {
                 list.add(DatabaseItem.of(DatabaseItem.ItemTypeEnum.TABLE,
                         tableRS.getString("TABLE_NAME"), tableRS.getString("REMARKS"), null));

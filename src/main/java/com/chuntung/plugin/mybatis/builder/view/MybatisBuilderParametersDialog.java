@@ -599,5 +599,4 @@ public class MybatisBuilderParametersDialog extends DialogWrapper {
     protected String getDimensionServiceKey() {
         return "MyBatisBuilder.ParametersDialog";
     }
-
 }

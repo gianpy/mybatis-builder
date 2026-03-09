@@ -48,5 +48,4 @@ public class IndicatorProcessCallback implements ProgressCallback {
     public void checkCancel() throws InterruptedException {
 
     }
-
 }

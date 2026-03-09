@@ -6,7 +6,7 @@ package com.chuntung.plugin.mybatis.builder.database;
 
 import com.chuntung.plugin.mybatis.builder.model.ConnectionInfo;
 import com.chuntung.plugin.mybatis.builder.model.DriverTypeEnum;
-import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
+import com.mysql.cj.jdbc.MysqlDataSource;
 import org.postgresql.ds.PGSimpleDataSource;
 
 import javax.sql.DataSource;
@@ -19,7 +19,7 @@ public class SimpleDataSourceFactory {
         return instance;
     }
 
-    public DataSource getDataSource(ConnectionInfo connectionInfo) {
+    public DataSource getDataSource(ConnectionInfo connectionInfo) throws SQLException {
         if (DriverTypeEnum.MySQL.equals(connectionInfo.getDriverType())) {
             MysqlDataSource dataSource = new MysqlDataSource();
             dataSource.setServerName(connectionInfo.getHost());
@@ -46,6 +46,31 @@ public class SimpleDataSourceFactory {
             dataSource.setPortNumber(connectionInfo.getPort());
             dataSource.setDatabaseName(connectionInfo.getDatabase());
             dataSource.setLoginTimeout(5);
+            return dataSource;
+        } else if (DriverTypeEnum.MariaDB.equals(connectionInfo.getDriverType())
+                || DriverTypeEnum.Oracle.equals(connectionInfo.getDriverType())
+                || DriverTypeEnum.DuckDB.equals(connectionInfo.getDriverType())
+                || DriverTypeEnum.SqlLite.equals(connectionInfo.getDriverType())) {
+            String driverClass = connectionInfo.getDriverClass();
+            if (driverClass == null || driverClass.isEmpty()) {
+                driverClass = connectionInfo.getDriverType().getDriverClass();
+            }
+            CustomDataSource dataSource = new CustomDataSource(connectionInfo.getDriverLibrary(), driverClass);
+            String url = connectionInfo.getUrl();
+            if (url == null || url.isEmpty()) {
+                url = connectionInfo.getDriverType().getUrlPattern()
+                        .replace("${host}", connectionInfo.getHost() != null ? connectionInfo.getHost() : "")
+                        .replace("${port}", String.valueOf(connectionInfo.getPort() != null ? connectionInfo.getPort() : connectionInfo.getDriverType().getDefaultPort()))
+                        .replace("${db}", connectionInfo.getDatabase() != null ? connectionInfo.getDatabase() : "");
+            }
+            dataSource.setUrl(url);
+            dataSource.setUser(connectionInfo.getUserName());
+            dataSource.setPassword(connectionInfo.getPassword());
+            try {
+                dataSource.setLoginTimeout(5);
+            } catch (SQLException e) {
+                // NOOP
+            }
             return dataSource;
         } else {
             CustomDataSource dataSource = new CustomDataSource(connectionInfo.getDriverLibrary(), connectionInfo.getDriverClass());

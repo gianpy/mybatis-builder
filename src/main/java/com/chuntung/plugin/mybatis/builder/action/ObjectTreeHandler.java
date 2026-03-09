@@ -21,6 +21,7 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.ui.ColoredTreeCellRenderer;
 import com.intellij.ui.PopupHandler;
+import com.intellij.util.messages.MessageBusConnection;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -35,6 +36,8 @@ import java.util.List;
 
 public class ObjectTreeHandler {
     private MybatisBuilderService service;
+    private JTree objectTree;
+    private TreePath currentTreePath;
 
     // custom tree cell renderer
     private static class CustomTreeCellRenderer extends ColoredTreeCellRenderer {
@@ -61,9 +64,6 @@ public class ObjectTreeHandler {
             }
         }
     }
-
-    private JTree objectTree;
-    private TreePath currentTreePath;
 
     // for connection or database
     private AnAction refreshAction = new DumbAwareAction("Refresh") {
@@ -99,7 +99,6 @@ public class ObjectTreeHandler {
 
     public ObjectTreeHandler(JTree objectTree, Project project) {
         service = MybatisBuilderService.getInstance(project);
-
         this.objectTree = objectTree;
 
         connectionPopupActionGroup = new DefaultActionGroup(
@@ -113,6 +112,15 @@ public class ObjectTreeHandler {
 
         AnAction buildAction = BuildAction.getInstance(project);
         tablePopupActionGroup = new DefaultActionGroup(buildAction);
+
+        // Subscribe to settings changes
+        MessageBusConnection connection = project.getMessageBus().connect();
+        connection.subscribe(ConnectionSettingsListener.TOPIC, new ConnectionSettingsListener() {
+            @Override
+            public void settingsChanged() {
+                refreshTree();
+            }
+        });
     }
 
     public static ObjectTreeHandler getInstance(JTree objectTree, Project project) {
@@ -124,6 +132,15 @@ public class ObjectTreeHandler {
         ApplicationManager.getApplication().invokeLater(
                 this::loadConnectionNodes
         );
+    }
+
+    private void refreshTree() {
+        ApplicationManager.getApplication().invokeLater(() -> {
+            DefaultMutableTreeNode root = (DefaultMutableTreeNode) objectTree.getModel().getRoot();
+            root.removeAllChildren();
+            ((DefaultTreeModel) objectTree.getModel()).reload();
+            loadConnectionNodes();
+        });
     }
 
     private synchronized void loadConnectionNodes() {

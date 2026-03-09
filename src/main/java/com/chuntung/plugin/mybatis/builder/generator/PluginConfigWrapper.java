@@ -52,3 +52,4 @@ public class PluginConfigWrapper<T> {
         return configBean;
     }
 }
+

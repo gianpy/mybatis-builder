@@ -50,11 +50,9 @@ public class BuildAction extends DumbAwareAction {
 
     // NOTE: action id should be consistent with plugin.xml
     private static final String ACTION_ID = "MyBatisBuilder.Build";
-
     public static AnAction getInstance(Project project) {
         return ActionManager.getInstance().getAction(ACTION_ID);
     }
-
     public @NotNull ActionUpdateThread getActionUpdateThread() {
         return ActionUpdateThread.BGT;
     }

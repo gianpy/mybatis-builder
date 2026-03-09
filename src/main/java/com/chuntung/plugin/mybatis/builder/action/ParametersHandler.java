@@ -25,7 +25,6 @@ import java.util.List;
 
 public class ParametersHandler {
     private static final Logger logger = LoggerFactory.getLogger(ParametersHandler.class);
-
     private final MybatisBuilderService service;
 
     public ParametersHandler(Project project) {

@@ -39,7 +39,6 @@ public class ConfigUtil {
         } catch (IllegalAccessException e) {
             logger.error("Failed to load config from properties", e);
         }
-
         return config;
     }
 
